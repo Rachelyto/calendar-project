@@ -6,7 +6,7 @@ setup(
     description="Comp In-Office Coding Evaluation - Python Implementation",
     url="https://comp.io",
     packages=find_packages(),
-    python_requires=">=3.8",
+    python_requires=">=3.9",
     install_requires=[],
     extras_require={
         "dev": [
