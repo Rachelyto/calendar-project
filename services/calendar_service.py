@@ -1,10 +1,11 @@
 from datetime import datetime, time, timedelta
 
+from models.event import Event
+from models.time_interval import TimeInterval
 from repository.calendar_repository_interface import CalendarRepositoryInterface
 
 
 class CalendarService:
-
     DAY_START = time(7, 0)
     DAY_END = time(19, 0)
 
@@ -12,9 +13,9 @@ class CalendarService:
         self.repository = repository
 
     def find_available_slots(
-        self,
-        person_list: list[str],
-        event_duration: timedelta
+            self,
+            person_list: list[str],
+            event_duration: timedelta
     ) -> list[time]:
 
         if not person_list:
@@ -26,7 +27,10 @@ class CalendarService:
         events = self.repository.get_events()
 
         available_intervals = [
-            (self.DAY_START, self.DAY_END)
+            TimeInterval(
+                self.DAY_START,
+                self.DAY_END
+            )
         ]
 
         for person in person_list:
@@ -50,15 +54,19 @@ class CalendarService:
             )
 
         return [
-            start_time
-            for start_time, end_time in available_intervals
+            interval.start_time
+            for interval in available_intervals
             if self._duration_between(
-                start_time,
-                end_time
+                interval.start_time,
+                interval.end_time
             ) >= event_duration
         ]
 
-    def _find_available_intervals(self, events):
+
+    def _find_available_intervals(
+            self,
+            events: list[Event]
+    ) -> list[TimeInterval]:
         available_intervals = []
 
         current_time = self.DAY_START
@@ -85,7 +93,10 @@ class CalendarService:
 
             if current_time < event_start:
                 available_intervals.append(
-                    (current_time, event_start)
+                    TimeInterval(
+                        current_time,
+                        event_start
+                    )
                 )
 
             if event_end > current_time:
@@ -93,35 +104,48 @@ class CalendarService:
 
         if current_time < self.DAY_END:
             available_intervals.append(
-                (current_time, self.DAY_END)
+                TimeInterval(
+                    current_time,
+                    self.DAY_END
+                )
             )
 
         return available_intervals
 
     def _intersect_intervals(
-        self,
-        first_intervals,
-        second_intervals
-    ):
+            self,
+            first_intervals: list[TimeInterval],
+            second_intervals: list[TimeInterval]
+    ) -> list[TimeInterval]:
+
         intersections = []
 
         first_index = 0
         second_index = 0
 
         while (
-            first_index < len(first_intervals)
-            and second_index < len(second_intervals)
+                first_index < len(first_intervals)
+                and second_index < len(second_intervals)
         ):
-            first_start, first_end = first_intervals[first_index]
-            second_start, second_end = second_intervals[second_index]
+            first_interval = first_intervals[first_index]
+            second_interval = second_intervals[second_index]
 
-            start = max(first_start, second_start)
-            end = min(first_end, second_end)
+            start = max(
+                first_interval.start_time,
+                second_interval.start_time
+            )
+
+            end = min(
+                first_interval.end_time,
+                second_interval.end_time
+            )
 
             if start < end:
-                intersections.append((start, end))
+                intersections.append(
+                    TimeInterval(start, end)
+                )
 
-            if first_end < second_end:
+            if first_interval.end_time < second_interval.end_time:
                 first_index += 1
             else:
                 second_index += 1
@@ -130,8 +154,8 @@ class CalendarService:
 
     @staticmethod
     def _duration_between(
-        start_time: time,
-        end_time: time
+            start_time: time,
+            end_time: time
     ) -> timedelta:
 
         start = datetime.combine(
